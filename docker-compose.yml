@@ -1,0 +1,19 @@
+ldapserver:
+  hostname: ldapserver.test
+  build: spec/docker/ldapserver/
+  ports:
+    - "127.0.0.1:3389:389"
+    - "127.0.0.1:6636:636"
+dev:
+  build: .
+  dockerfile: spec/docker/dev/Dockerfile
+  environment:
+    LDAPSERVER_HOSTNAME: ldapserver.test
+    LDAPSERVER_USER: cn=ldaproot,dc=ldapserver,dc=test
+    LDAPSERVER_PASS: password
+    LDAPSERVER_URL: ldap://ldapserver.test
+    LDAPSERVER_TLS_URL: ldaps://ldapserver.test
+  links:
+    - ldapserver:ldapserver.test
+  volumes:
+    - .:/app
