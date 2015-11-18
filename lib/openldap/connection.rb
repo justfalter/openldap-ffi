@@ -2,29 +2,11 @@ require 'openldap/bindings'
 require 'openldap/constants'
 require 'openldap/exceptions'
 require 'openldap/entry'
+require 'openldap/unbind_handler'
 require 'ffi/libc'
 require 'uri'
+
 module OpenLDAP
-  # Unbinds from LDAP server in case the user forgot to do this, themselves.
-  class UnbindHandler
-    def initialize(handles)
-      @pid = $$
-      @handles = handles
-    end
-
-    def call(*args)
-      # Don't clean up handles we don't own (like if we forked)
-      return if @pid != $$
-
-      @handles.each do |h|
-        next if h.nil?
-        ldap_unbind_s(h)
-      end
-
-      @handles.clear
-    end
-  end
-
   class Connection
     include OpenLDAP::Bindings
     include OpenLDAP::Constants
@@ -44,7 +26,9 @@ module OpenLDAP
       raise_if_error!(res)
       @handle = handle_ptr.get_pointer(0)
       if @handle.null?
+        #:nocov:
         raise "ldap_initialize failed: #{url}"
+        #:nocov:
       end
 
       @handles_for_cleanup = [ @handle ]
@@ -106,61 +90,6 @@ module OpenLDAP
     # @option opts [String] :attributes ("*") Space separated list of attributes to return.
     # @option opts [Integer] :timeout (10) The number of seconds to wait before giving up on the query.
     def search(basedn, opts = {}, &block)
-      o = {
-        scope: :subtree,
-        filter: nil,
-        attributes: "*",
-        timeout: 10
-      }.merge(opts)
-
-      attr_strings = o[:attributes].split(/\s+/)
-      attrs = FFI::MemoryPointer.new(:pointer, attr_strings.count + 1)
-      attrs[attr_strings.count].put_pointer(0,nil)
-      attr_strings.each_with_index do |str, i|
-        attrs[i].put_pointer(0, FFI::MemoryPointer.from_string(str))
-      end
-
-      res_ptrptr = FFI::MemoryPointer.new(:pointer)
-
-      scope_v = LDAP_SCOPE_MAP[o[:scope]]
-      if scope_v.nil?
-        raise ArgumentError.new("Invalid scope value: #{o[:scope]}")
-      end
-
-      tout = FFI::LibC::Timeval.new
-      tout[:tv_sec] = o[:timeout]
-
-      begin
-        rc = ldap_search_ext_s(
-          @handle, 
-          basedn,
-          scope_v,
-          o[:filter],
-          attrs,
-          0, 
-          nil,
-          nil,
-          tout,
-          0,
-          res_ptrptr)
-
-        _iterate_search_response(res_ptrptr.get_pointer(0)) do |entry|
-          block.call(entry) unless block.nil?
-        end
-      ensure
-        # Free the initial res pointer.
-        ldap_msgfree(res_ptrptr.get_pointer(0))
-      end
-    end
-
-    # @param [String] basedn The base distinguished name to search
-    # @param [Hash] opts Options
-    # @option opts [Symbol] :scope (:subtree) Search scope. Allowed values: :base, :onelevel, 
-    #   :subtree, :subordinate, :default.
-    # @option opts [String] :filter (nil)
-    # @option opts [String] :attributes ("*") Space separated list of attributes to return.
-    # @option opts [Integer] :timeout (10) The number of seconds to wait before giving up on the query.
-    def search_async(basedn, opts = {}, &block)
       o = {
         scope: :subtree,
         filter: nil,
