@@ -1,0 +1,26 @@
+dn: <%= dn %>
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: <%= whole_name %>
+sn: <%= last_name %>
+description: This is <%= whole_name %>'s description
+facsimileTelephoneNumber: <%= rand_phone %>
+l: <%= town %>
+ou: <%= ou.name %>
+postalAddress: <%= ou.name %>$<%= town %>
+telephoneNumber: <%= rand_phone %>
+title: Junior <%= ou.name %> Writer
+userPassword: Password1
+uid: <%= uid %>
+givenName: <%= first_name %>
+mail: <%= uid + "@" + ou.domain.domain %>
+departmentNumber: <%= rand(10000) %>
+employeeType: <%= employee_type %>
+homePhone: <%= rand_phone %>
+initials: <%= first_name[0] %>. <%= last_name[0]%>.
+mobile: <%= rand_phone %>
+pager: <%= rand_phone %>
+roomNumber: <%= rand(10000) %>
+
